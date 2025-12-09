@@ -36,4 +36,4 @@ Validates payloads → triggers `mintForMission()` → updates impact scores.
 ### **1. Clone the repository**
 ```bash
 git clone https://github.com/<vandaliz3dmind>/<Angel-Coin-Project>.git
-cd <repo-name>
+cd <Angel-Coin-Project>
