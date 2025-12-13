@@ -6,15 +6,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title AngelCoin
 /// @notice Capped-supply ERC20 token that can only be minted by authorised
-///         contracts when a participant completes a verified mission. The owner
-///         can designate or revoke authorised minters and update governance
-///         parameters. This prototype is intended for testnet use only.
+///         contracts when a participant completes a verified mission.
+///         Intended for testnet / prototype use only.
 contract AngelCoin is ERC20, Ownable {
     /// @notice Maximum number of tokens that can ever be minted.
     uint256 public immutable maxSupply;
 
-    /// @dev Mapping of authorised minter addresses. These contracts are allowed
-    ///      to call mintForMission(). E.g. ImpactMiningRewards.
+    /// @dev Mapping of authorised minter addresses.
     mapping(address => bool) public authorisedMinters;
 
     /// @dev Emitted when a new authorised minter is added.
@@ -24,7 +22,10 @@ contract AngelCoin is ERC20, Ownable {
     event MinterRemoved(address indexed minter);
 
     /// @param _maxSupply The maximum total supply (in wei) of AngelCoin.
-    constructor(uint256 _maxSupply) ERC20("AngelCoin", "ANGEL") {
+    constructor(uint256 _maxSupply)
+        ERC20("AngelCoin", "ANGEL")
+        Ownable(msg.sender)
+    {
         require(_maxSupply > 0, "Max supply must be positive");
         maxSupply = _maxSupply;
     }
