@@ -1,72 +1,73 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+/* ────────────────────────────── */
+/*        Named Imports ONLY       */
+/* ────────────────────────────── */
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-/**
- * @title AngelCoin
- * @notice Capped-supply ERC20 token.
- *         Tokens may ONLY be minted by authorized minter contracts
- *         (e.g. mission verifiers, impact vaults, bridge contracts).
- */
+/* ────────────────────────────── */
+/*          Custom Errors          */
+/* ────────────────────────────── */
+error MaxSupplyZero();
+error UnauthorizedMinter();
+error MaxSupplyExceeded();
+error InvalidAddress();
+
+/* ────────────────────────────── */
+/*            Contract             */
+/* ────────────────────────────── */
 contract AngelCoin is ERC20, Ownable {
-    /// @notice Maximum total supply (immutable after deployment)
-    uint256 public immutable MAX_SUPPLY;
+    /* ───────────── Storage ───────────── */
 
-    /// @notice Authorized minter contracts
-    mapping(address => bool) public authorizedMinters;
+    uint256 private immutable _MAX_SUPPLY;
+    mapping(address => bool) private _authorizedMinters;
 
-    /// @notice Emitted when a minter is authorized or revoked
+    /* ───────────── Events ───────────── */
+
     event MinterAuthorizationUpdated(address indexed minter, bool authorized);
 
-    /**
-     * @param name_ Token name
-     * @param symbol_ Token symbol
-     * @param maxSupply_ Hard cap (in wei units, e.g. 1e18 decimals)
-     */
+    /* ───────────── Constructor ───────────── */
+
     constructor(
         string memory name_,
         string memory symbol_,
         uint256 maxSupply_
     ) ERC20(name_, symbol_) Ownable(msg.sender) {
-        require(maxSupply_ > 0, "Max supply must be > 0");
-        MAX_SUPPLY = maxSupply_;
+        if (maxSupply_ == 0) revert MaxSupplyZero();
+        _MAX_SUPPLY = maxSupply_;
     }
 
-    /**
-     * @notice Authorize or revoke a minter contract
-     * @param minter Address of the minter contract
-     * @param authorized True to authorize, false to revoke
-     */
+    /* ───────────── Views ───────────── */
+
+    function maxSupply() external view returns (uint256) {
+        return _MAX_SUPPLY;
+    }
+
+    function isAuthorizedMinter(address minter) external view returns (bool) {
+        return _authorizedMinters[minter];
+    }
+
+    /* ───────────── Admin ───────────── */
+
     function setAuthorizedMinter(
         address minter,
         bool authorized
     ) external onlyOwner {
-        require(minter != address(0), "Invalid minter address");
-        authorizedMinters[minter] = authorized;
+        if (minter == address(0)) revert InvalidAddress();
+        _authorizedMinters[minter] = authorized;
         emit MinterAuthorizationUpdated(minter, authorized);
     }
 
-    /**
-     * @notice Mint AngelCoin (only callable by authorized minters)
-     * @param to Recipient address
-     * @param amount Amount to mint
-     */
-    function mint(
-        address to,
-        uint256 amount
-    ) external {
-        require(authorizedMinters[msg.sender], "Caller not authorized to mint");
-        require(totalSupply() + amount <= MAX_SUPPLY, "Max supply exceeded");
+    /* ───────────── Mint / Burn ───────────── */
+
+    function mint(address to, uint256 amount) external {
+        if (!_authorizedMinters[msg.sender]) revert UnauthorizedMinter();
+        if (totalSupply() + amount > _MAX_SUPPLY) revert MaxSupplyExceeded();
         _mint(to, amount);
     }
 
-    /**
-     * @notice Burn tokens from caller
-     *         (used for donation burns, NFT proof minting, tier upgrades, etc.)
-     * @param amount Amount to burn
-     */
     function burn(uint256 amount) external {
         _burn(msg.sender, amount);
     }
